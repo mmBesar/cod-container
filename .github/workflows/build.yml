@@ -1,0 +1,149 @@
+# =============================================================================
+# Call of Duty 1 (v1.1) Dedicated Server — GitHub Actions Build Workflow
+# https://github.com/mmBesar/cod-container
+#
+# Triggers:
+#   - Push to main branch         → builds and pushes :latest
+#   - Semver tag (v1.2.3)         → builds and pushes :1.2.3 + :latest
+#   - Pull request against main   → builds only (no push), validates Dockerfile
+#
+# Image is published to:
+#   ghcr.io/mmbesar/cod-container:latest
+#   ghcr.io/mmbesar/cod-container:1.2.3   (on semver tags)
+#
+# No secrets to configure — uses the built-in GITHUB_TOKEN for GHCR auth.
+# Repo must have: Settings → Actions → General → Workflow permissions = Read & Write
+# =============================================================================
+
+name: Build & Push to GHCR
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"   # semver tags: v1.0.0, v2.3.1, etc.
+  pull_request:
+    branches:
+      - main
+
+# Cancel any in-progress run for the same branch/PR when a new one starts.
+# Saves GitHub Actions minutes on rapid pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}   # mmbesar/cod-container
+
+jobs:
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+
+    # Required for GHCR push using GITHUB_TOKEN
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout — needed so Dockerfile and entrypoint are available
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # 2. Set up Docker Buildx
+      #    Uses the docker-container driver which supports layer caching,
+      #    multi-stage builds, and the GitHub Actions cache backend.
+      # -----------------------------------------------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # -----------------------------------------------------------------------
+      # 3. Log in to GHCR using the built-in GITHUB_TOKEN
+      #    No personal access token or secret needed.
+      # -----------------------------------------------------------------------
+      - name: Log in to GitHub Container Registry
+        # Only log in when we are actually going to push (not on PRs)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # 4. Extract metadata (tags + labels)
+      #    docker/metadata-action generates the correct tags automatically:
+      #      - push to main          → :latest
+      #      - push tag v1.2.3       → :1.2.3  and  :latest
+      #      - pull request          → :pr-42  (not pushed)
+      # -----------------------------------------------------------------------
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # semver tag push → :1.2.3
+            type=semver,pattern={{version}}
+            # semver tag push → :1.2  (minor)
+            type=semver,pattern={{major}}.{{minor}}
+            # push to main → :latest
+            type=raw,value=latest,enable={{is_default_branch}}
+            # pull request → :pr-42 (build-only, not pushed)
+            type=ref,event=pr
+          labels: |
+            org.opencontainers.image.title=Call of Duty 1 Dedicated Server
+            org.opencontainers.image.description=CoD1 v1.1 server with CoDaM and CoDExtended
+            org.opencontainers.image.vendor=mmBesar
+            org.opencontainers.image.licenses=GPL-2.0
+
+      # -----------------------------------------------------------------------
+      # 5. Build (and push on non-PR events)
+      #
+      #    cache-from / cache-to: type=gha
+      #      Uses GitHub Actions Cache as the BuildKit cache backend.
+      #      Dramatically speeds up repeat builds — only changed layers rebuild.
+      #
+      #    push: ${{ github.event_name != 'pull_request' }}
+      #      Builds on every event, but only pushes on main/tag — never on PRs.
+      #
+      #    platforms: linux/amd64
+      #      CoD1 server binary is 32-bit x86 — amd64 only, no ARM needed.
+      # -----------------------------------------------------------------------
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions cache — fast incremental rebuilds
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Provenance attestation — shows build provenance in GHCR UI
+          provenance: true
+
+      # -----------------------------------------------------------------------
+      # 6. Print image digest to the workflow summary for easy reference
+      # -----------------------------------------------------------------------
+      - name: Image digest
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "### ✅ Image pushed to GHCR" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pull command:**" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ghcr.io/${{ github.repository }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
