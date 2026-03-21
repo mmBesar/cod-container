@@ -1,0 +1,22 @@
+# =============================================================================
+# Call of Duty 1 (v1.1) Dedicated Server — .gitignore
+# https://github.com/mmBesar/cod-container
+# =============================================================================
+
+# --- Environment variables — contains passwords, never commit ----------------
+.env
+
+# --- Runtime directories created by docker compose --------------------------
+maps/
+logs/
+config/
+
+# --- OS clutter --------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# --- Editor clutter ----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
