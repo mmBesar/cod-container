@@ -1,0 +1,126 @@
+# =============================================================================
+# Call of Duty 1 (v1.1) Dedicated Server — Docker Compose
+# https://github.com/mmBesar/cod-container
+#
+# Usage:
+#   cp .env.example .env        # copy and edit the example env file
+#   docker compose up -d        # start the server
+#   docker compose logs -f      # follow logs
+#   docker compose down         # stop the server
+#
+# Map files (.pk3) must be placed in ./maps/ before starting.
+# They are mounted read-only into the container at /server/maps/.
+# =============================================================================
+
+services:
+  cod1:
+    image: ghcr.io/mmbesar/cod-container:latest
+    container_name: cod1-server
+
+    # -------------------------------------------------------------------------
+    # Run as the current host user so files written to ./logs/ and ./config/
+    # are owned by you, not root.
+    # Set UID and GID in your shell or in .env:
+    #   export UID=$(id -u) GID=$(id -g)
+    # -------------------------------------------------------------------------
+    user: "${UID:-1000}:${GID:-1000}"
+
+    # -------------------------------------------------------------------------
+    # Port — UDP only, CoD1 does not use TCP
+    # -------------------------------------------------------------------------
+    ports:
+      - "${SERVER_PORT:-28960}:${SERVER_PORT:-28960}/udp"
+
+    # -------------------------------------------------------------------------
+    # Volumes
+    #
+    #   ./maps/    — put your .pk3 map files here (read-only in container)
+    #   ./logs/    — server log output (games_mp.log lands here)
+    #   ./config/  — optional: place a hand-crafted server.cfg here to
+    #                override all env-var-based config generation
+    # -------------------------------------------------------------------------
+    volumes:
+      - ./maps:/server/maps:ro
+      - ./logs:/server/logs
+      - ./config:/server/config:ro
+
+    # -------------------------------------------------------------------------
+    # Environment variables — all optional, sane defaults apply.
+    # Copy .env.example to .env and edit to your needs.
+    # -------------------------------------------------------------------------
+    environment:
+
+      # --- Server identity ---------------------------------------------------
+      SERVER_HOSTNAME:    "${SERVER_HOSTNAME:-CoD1 Docker Server}"
+      SERVER_PASSWORD:    "${SERVER_PASSWORD:-}"
+      RCON_PASSWORD:      "${RCON_PASSWORD:-changeme}"
+      MOTD:               "${MOTD:-Welcome to CoD1 Docker Server!}"
+
+      # --- Network -----------------------------------------------------------
+      SERVER_PORT:        "${SERVER_PORT:-28960}"
+      SERVER_IP:          "${SERVER_IP:-}"        # empty = auto-detect
+
+      # --- Gameplay ----------------------------------------------------------
+      GAMETYPE:           "${GAMETYPE:-tdm}"      # dm tdm sd re bel
+      MAX_CLIENTS:        "${MAX_CLIENTS:-16}"
+      SV_PURE:            "${SV_PURE:-0}"
+      FRIENDLY_FIRE:      "${FRIENDLY_FIRE:-0}"
+      SCORE_LIMIT:        "${SCORE_LIMIT:-100}"
+      TIME_LIMIT:         "${TIME_LIMIT:-30}"
+      ROUND_LIMIT:        "${ROUND_LIMIT:-0}"
+      ALLOW_VOTE:         "${ALLOW_VOTE:-0}"
+
+      # --- Maps --------------------------------------------------------------
+      START_MAP:          "${START_MAP:-mp_harbor}"
+      # Space-separated map list for rotation, e.g:
+      #   MAP_ROTATION=mp_harbor mp_dawnville mp_carentan mp_brecourt
+      # Leave empty to loop START_MAP only.
+      MAP_ROTATION:       "${MAP_ROTATION:-}"
+
+      # --- CoDExtended -------------------------------------------------------
+      X_AUTHORIZE:        "${X_AUTHORIZE:-0}"     # 0=cracked 1=CD key required
+      X_DEADCHAT:         "${X_DEADCHAT:-0}"
+      X_NOPBOTS:          "${X_NOPBOTS:-1}"
+      X_SPECTATOR_NOCLIP: "${X_SPECTATOR_NOCLIP:-0}"
+      SV_FAST_DOWNLOAD:   "${SV_FAST_DOWNLOAD:-1}"
+
+      # --- Masterserver ------------------------------------------------------
+      SV_MASTER:          "${SV_MASTER:-master.cod.pm}"
+
+      # --- Bots --------------------------------------------------------------
+      BOTS_ENABLED:       "${BOTS_ENABLED:-false}"
+      BOTS_COUNT:         "${BOTS_COUNT:-4}"
+      BOTS_TEAM:          "${BOTS_TEAM:-autoassign}"  # allies axis autoassign
+      BOTS_DIFFICULTY:    "${BOTS_DIFFICULTY:-5}"     # 0-10
+
+      # --- Misc --------------------------------------------------------------
+      SV_FPS:             "${SV_FPS:-20}"
+      EXTRA_ARGS:         "${EXTRA_ARGS:-}"
+
+    # -------------------------------------------------------------------------
+    # Restart policy — restart unless explicitly stopped
+    # -------------------------------------------------------------------------
+    restart: unless-stopped
+
+    # -------------------------------------------------------------------------
+    # Healthcheck
+    # Sends a UDP getstatus query to the server's own port and checks for
+    # a valid response. Requires netcat (nc) in the container.
+    # Marked as a TODO — nc is not installed in the slim image by default.
+    # See README for how to enable this.
+    # -------------------------------------------------------------------------
+    # healthcheck:
+    #   test: ["CMD-SHELL", "echo -n '\\xff\\xff\\xff\\xffgetstatus' | nc -u -w1 127.0.0.1 ${SERVER_PORT:-28960} | grep -q 'sv_hostname'"]
+    #   interval: 30s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 15s
+
+    # -------------------------------------------------------------------------
+    # Logging — keep container logs manageable
+    # -------------------------------------------------------------------------
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
