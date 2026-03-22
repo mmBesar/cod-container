@@ -21,26 +21,55 @@ WORKDIR /build
 # -----------------------------------------------------------------------------
 # 1. CoD1 v1.1 server binary + game library
 #    Source: https://de.dvotx.org/dump/cod1/cod-lnxded-1.1d.tar.bz2
+#
+#    The tarball extracts with its own internal directory structure:
+#      cod_lnxded         -> at root of tarball
+#      main/game.mp.i386.so -> inside a main/ subdirectory
+#
+#    We extract everything, then use find to move files to known flat paths
+#    so the COPY instructions in the final stage are always correct regardless
+#    of any future tarball layout changes.
 # -----------------------------------------------------------------------------
 RUN curl -fsSL "https://de.dvotx.org/dump/cod1/cod-lnxded-1.1d.tar.bz2" \
         -o cod-lnxded-1.1d.tar.bz2 \
     && tar -xjf cod-lnxded-1.1d.tar.bz2 \
-    && rm cod-lnxded-1.1d.tar.bz2
-
-# Expect: cod_lnxded  game.mp.i386.so
+    && rm cod-lnxded-1.1d.tar.bz2 \
+    # Show extracted layout for build log visibility
+    && echo "=== Tarball contents ===" \
+    && find . -not -path '*/\.*' | sort \
+    # Flatten: move cod_lnxded and game.mp.i386.so to /build root if nested
+    && find . -name "cod_lnxded" ! -path "./cod_lnxded" \
+         -exec mv {} ./cod_lnxded \; 2>/dev/null || true \
+    && find . -name "game.mp.i386.so" ! -path "./game.mp.i386.so" \
+         -exec mv {} ./game.mp.i386.so \; 2>/dev/null || true \
+    && echo "=== After flatten ===" \
+    && ls -lh . \
+    # Verify both files are present before proceeding
+    && test -f ./cod_lnxded      || (echo "ERROR: cod_lnxded not found!"      && exit 1) \
+    && test -f ./game.mp.i386.so || (echo "ERROR: game.mp.i386.so not found!" && exit 1)
 
 # -----------------------------------------------------------------------------
 # 2. CoD1 v1.1 base pk3 files (pak0–pak6 + localized english paks)
 #    Source: https://de.dvotx.org/dump/cod1/downloads.php?get=basefilesfull
+#
+#    Extracts into basefiles/ then flattens all pk3 files to basefiles/ root.
 # -----------------------------------------------------------------------------
 RUN curl -fsSL "https://de.dvotx.org/dump/cod1/downloads.php?get=basefilesfull" \
         -o basefiles.zip \
     && unzip -q basefiles.zip -d basefiles \
-    && rm basefiles.zip
-
-# Expect inside basefiles/: pak0.pk3 … pak6.pk3
-#                            localized_english_pak0.pk3
-#                            localized_english_pak1.pk3
+    && rm basefiles.zip \
+    # Show what we got
+    && echo "=== Basefiles contents ===" \
+    && find basefiles/ | sort \
+    # Flatten all pk3 files to basefiles/ root in case they are in a subdir
+    && find basefiles/ -name "*.pk3" ! -path "basefiles/*.pk3" \
+         -exec mv {} basefiles/ \; 2>/dev/null || true \
+    && echo "=== Basefiles after flatten ===" \
+    && ls -lh basefiles/ \
+    # Verify essential pk3 files are present
+    && test -f basefiles/pak0.pk3 || (echo "ERROR: pak0.pk3 not found!" && exit 1) \
+    && test -f basefiles/localized_english_pak0.pk3 \
+         || (echo "ERROR: localized_english_pak0.pk3 not found!" && exit 1)
 
 # -----------------------------------------------------------------------------
 # 3. CoDaM v1.31 — server-side admin/mod framework
