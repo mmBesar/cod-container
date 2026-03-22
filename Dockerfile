@@ -39,14 +39,17 @@ WORKDIR /build
 # `wait` blocks until every background job finishes.
 #
 # Files fetched:
-#   cod-lnxded-1.1d.tar.bz2     - server binary (cod_lnxded)
+#   cod-lnxded-1.1d.tar.bz2     - server binary (cod_lnxded) AND
+#                                  game.mp.i386.so (Linux game logic library)
 #   CoDaM_V1.31.zip             - CoDaM core mod framework
 #   CoDaM_HamGoodies_V1.35.zip  - CoDaM HamGoodies module
 #   codextended.so              - CoDExtended preload library (latest release)
 #
-# NOTE: basefiles (pak*.pk3, game.mp.i386.so) are intentionally NOT downloaded
-#       here - they are copyrighted Activision assets and must be supplied by
-#       the user from their own legitimate CoD1 installation.
+# NOTE: pak*.pk3 files are intentionally NOT downloaded here - they are
+#       copyrighted Activision assets and must be supplied by the user from
+#       their own legitimate CoD1 installation.
+#       game.mp.i386.so is Linux-only and comes from the official Linux server
+#       tarball - the user does not need to supply it.
 # -----------------------------------------------------------------------------
 RUN set -e \
     && curl -fsSL "https://de.dvotx.org/dump/cod1/cod-lnxded-1.1d.tar.bz2" \
@@ -61,7 +64,9 @@ RUN set -e \
     \
     && tar -xjf cod-lnxded-1.1d.tar.bz2 \
     && rm cod-lnxded-1.1d.tar.bz2 \
-    && find . -name "cod_lnxded" ! -path "./cod_lnxded" \
+    && find . -name "cod_lnxded"      ! -path "./cod_lnxded"      \
+         -exec mv {} . \; 2>/dev/null || true \
+    && find . -name "game.mp.i386.so" ! -path "./game.mp.i386.so" \
          -exec mv {} . \; 2>/dev/null || true \
     \
     && unzip -q CoDaM_V1.31.zip -d codam_core \
@@ -71,8 +76,9 @@ RUN set -e \
     && rm CoDaM_HamGoodies_V1.35.zip \
     \
     && echo "=== Build artefacts ===" && find . | sort \
-    && test -f ./cod_lnxded     || (echo "ERROR: cod_lnxded not found!"     && exit 1) \
-    && test -f ./codextended.so || (echo "ERROR: codextended.so not found!" && exit 1) \
+    && test -f ./cod_lnxded      || (echo "ERROR: cod_lnxded not found!"      && exit 1) \
+    && test -f ./game.mp.i386.so || (echo "ERROR: game.mp.i386.so not found!" && exit 1) \
+    && test -f ./codextended.so  || (echo "ERROR: codextended.so not found!"  && exit 1) \
     && echo "=== All downloads verified OK ==="
 
 # =============================================================================
@@ -108,7 +114,8 @@ RUN dpkg --add-architecture i386 \
 # Server directory layout
 #
 #   /server/          - server root (fs_basepath + fs_homepath)
-#   /server/main/     - MOUNT POINT: user's CoD1 main/ folder
+#   /server/main/     - MOUNT POINT: user's CoD1 main/ folder (pak*.pk3 only)
+#                       game.mp.i386.so is already baked in here
 #   /server/codam/    - CoDaM mod files (baked in, never touched by user)
 #   /server/logs/     - MOUNT POINT: games_mp.log output
 #   /server/config/   - MOUNT POINT: optional hand-crafted server.cfg
@@ -124,10 +131,16 @@ RUN mkdir -p \
         /server/config
 
 # -----------------------------------------------------------------------------
-# Copy server binary and CoDExtended library
+# Copy server binary, game logic library, and CoDExtended
+#
+# game.mp.i386.so comes from the official Linux server tarball - it is the
+# Linux multiplayer game logic library. The user does not need to supply it.
+# It lives in /server/main/ because that is where the engine expects it
+# relative to fs_basepath.
 # -----------------------------------------------------------------------------
-COPY --from=downloader /build/cod_lnxded     /server/cod_lnxded
-COPY --from=downloader /build/codextended.so /server/codextended.so
+COPY --from=downloader /build/cod_lnxded      /server/cod_lnxded
+COPY --from=downloader /build/game.mp.i386.so /server/main/game.mp.i386.so
+COPY --from=downloader /build/codextended.so  /server/codextended.so
 
 # -----------------------------------------------------------------------------
 # Copy CoDaM core into /server/codam/
