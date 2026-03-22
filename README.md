@@ -42,14 +42,28 @@ Edit `.env` to set your server name, RCON password, and anything else you want t
 ### 3. Create the local directories
 
 ```bash
-mkdir -p maps logs config
+mkdir -p main logs config
 ```
 
-### 4. Add your map files
+### 4. Add your CoD1 game files
 
-Copy your `.pk3` map files into `./maps/`. These come from your CoD1 game installation (`main/` folder). The base game maps are already baked into the image — you only need to add custom or additional maps here.
+Copy your entire CoD1 `main/` folder contents into `./main/`. This folder comes from your legitimate CoD1 game installation (Steam, disc, or otherwise). It must contain at minimum:
 
-> **Note:** The standard CoD1 v1.1 multiplayer maps (`mp_harbor`, `mp_dawnville`, `mp_carentan`, `mp_brecourt`, `mp_bocage`, `mp_neuville`, `mp_powcamp`, `mp_rocket`, `mp_stalingrad`) are included in the base `pak*.pk3` files already in the image. You do not need to copy those.
+| File | Required |
+|---|---|
+| `pak0.pk3` | ✅ Yes |
+| `pak1.pk3` – `pak6.pk3` | ✅ Yes |
+| `game.mp.i386.so` | ✅ Yes |
+| `localized_english_pak0.pk3` | ✅ Yes |
+| `localized_english_pak1.pk3` | ✅ Yes |
+
+```bash
+# Example: copy from a local CoD1 installation
+cp /path/to/CallOfDuty/main/*.pk3 ./main/
+cp /path/to/CallOfDuty/main/game.mp.i386.so ./main/
+```
+
+> **Note:** CoDaM mod files are baked into the image — you do not need to copy them.
 
 ### 5. Start the server
 
@@ -144,7 +158,7 @@ The entrypoint detects it and skips env-var generation entirely. Your file is us
 
 ```
 cod-container/
-├── maps/          ← mount your .pk3 map files here
+├── main/          ← your CoD1 main/ folder (pak*.pk3, game.mp.i386.so)
 ├── logs/          ← games_mp.log appears here
 ├── config/        ← optional: place server.cfg here to override env vars
 ├── Dockerfile
@@ -153,6 +167,18 @@ cod-container/
 ├── .env.example
 ├── .env           ← your local config (never committed)
 └── .gitignore
+```
+
+Inside the container the layout is:
+
+```
+/server/
+├── cod_lnxded          ← baked in: server binary
+├── codextended.so      ← baked in: CoDExtended library
+├── codam/              ← baked in: CoDaM + HamGoodies mod files
+├── main/               ← mounted: your CoD1 main/ folder
+├── logs/               ← mounted: server log output
+└── config/             ← mounted: optional server.cfg override
 ```
 
 ---
@@ -241,7 +267,7 @@ To test without pushing:
 ```bash
 docker run --rm \
   -p 28960:28960/udp \
-  -v $(pwd)/maps:/server/maps:ro \
+  -v $(pwd)/main:/server/main:ro \
   -v $(pwd)/logs:/server/logs \
   -e SERVER_HOSTNAME="My Test Server" \
   -e RCON_PASSWORD="test" \
@@ -261,6 +287,7 @@ docker run --rm \
 | CoDExtended | latest release |
 | CoDaM | v1.31 |
 | CoDaM HamGoodies | v1.35 |
+| Approx. image size | ~350MB |
 | Published to | `ghcr.io/mmbesar/cod-container` |
 
 > **Why `bookworm` and not `trixie`?** CoD1 requires `libstdc++5:i386` — the old GCC 3.x C++ runtime. This package was dropped in Debian trixie. Bookworm is the newest Debian release that still carries it.
