@@ -48,10 +48,6 @@ SV_FAST_DOWNLOAD="${SV_FAST_DOWNLOAD:-1}"
 
 SV_MASTER="${SV_MASTER:-master.cod.pm}"
 
-BOTS_ENABLED="${BOTS_ENABLED:-false}"
-BOTS_COUNT="${BOTS_COUNT:-4}"
-BOTS_TEAM="${BOTS_TEAM:-autoassign}"
-BOTS_DIFFICULTY="${BOTS_DIFFICULTY:-5}"
 
 SV_FPS="${SV_FPS:-20}"
 EXTRA_ARGS="${EXTRA_ARGS:-}"
@@ -204,16 +200,7 @@ EOF
 fi
 
 # =============================================================================
-# Step 3 - Bots note
-# =============================================================================
-if [ "$BOTS_ENABLED" = "true" ]; then
-    log "Bots enabled: ${BOTS_COUNT} bots, team=${BOTS_TEAM}, difficulty=${BOTS_DIFFICULTY}"
-    log "NOTE: MeatBot requires 'addbot' commands after server start."
-    log "      Use rcon to issue: rcon addbot ${BOTS_TEAM}"
-fi
-
-# =============================================================================
-# Step 4 - Build the server launch command
+# Step 3 - Build the server launch command
 #
 # fs_basepath /server  - where cod_lnxded and codextended.so live
 # fs_homepath /server  - where the server writes runtime files
