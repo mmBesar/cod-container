@@ -100,9 +100,12 @@ services:
       EXTRA_ARGS:         "${EXTRA_ARGS:-}"
 
     # -------------------------------------------------------------------------
-    # Restart policy — restart unless explicitly stopped
+    # Restart policy
+    # on-failure: only restart if the server crashes (non-zero exit).
+    # This prevents an infinite restart loop if the container fails to start
+    # due to missing game files or misconfiguration.
     # -------------------------------------------------------------------------
-    restart: unless-stopped
+    restart: on-failure:3
 
     # -------------------------------------------------------------------------
     # Healthcheck
