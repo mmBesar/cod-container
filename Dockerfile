@@ -123,11 +123,13 @@ RUN mkdir -p \
         /server/codam \
         /server/logs \
         /server/config \
-    && chmod -R 777 \
+    && mkdir -p /server/.callofduty     && chmod -R 777 \
+        /server \
         /server/main \
         /server/codam \
         /server/logs \
-        /server/config
+        /server/config \
+        /server/.callofduty
 
 # -----------------------------------------------------------------------------
 # Copy server binary, game logic library, and CoDExtended
