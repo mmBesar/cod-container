@@ -19,85 +19,64 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 
 # -----------------------------------------------------------------------------
-# 1. CoD1 v1.1 server binary + game library
-#    Source: https://de.dvotx.org/dump/cod1/cod-lnxded-1.1d.tar.bz2
+# Download all server files in parallel then extract/verify.
 #
-#    The tarball extracts with its own internal directory structure:
-#      cod_lnxded         -> at root of tarball
-#      main/game.mp.i386.so -> inside a main/ subdirectory
+# All five curl calls run in the background (&) simultaneously.
+# `wait` blocks until every background job finishes.
+# If any curl fails (-fsSL exits non-zero) the overall RUN step fails.
 #
-#    We extract everything, then use find to move files to known flat paths
-#    so the COPY instructions in the final stage are always correct regardless
-#    of any future tarball layout changes.
+# Files fetched:
+#   cod-lnxded-1.1d.tar.bz2     — server binary + game.mp.i386.so
+#   basefiles.zip               — pak0–pak6 + localized english pk3s
+#   CoDaM_V1.31.zip             — CoDaM core mod framework
+#   CoDaM_HamGoodies_V1.35.zip  — CoDaM HamGoodies module
+#   codextended.so              — CoDExtended preload library (latest release)
 # -----------------------------------------------------------------------------
-RUN curl -fsSL "https://de.dvotx.org/dump/cod1/cod-lnxded-1.1d.tar.bz2" \
-        -o cod-lnxded-1.1d.tar.bz2 \
+RUN set -e \
+    # --- Parallel downloads --------------------------------------------------
+    && curl -fsSL "https://de.dvotx.org/dump/cod1/cod-lnxded-1.1d.tar.bz2" \
+         -o cod-lnxded-1.1d.tar.bz2 & \
+    curl -fsSL "https://de.dvotx.org/dump/cod1/downloads.php?get=basefilesfull" \
+         -o basefiles.zip & \
+    curl -fsSL "https://de.dvotx.org/dump/cod1/CoDaM/CoDaM_V1.31.zip" \
+         -o CoDaM_V1.31.zip & \
+    curl -fsSL "https://de.dvotx.org/dump/cod1/CoDaM/CoDaM_HamGoodies_V1.35.zip" \
+         -o CoDaM_HamGoodies_V1.35.zip & \
+    curl -fsSL "https://github.com/riicchhaarrd/codextended/releases/latest/download/codextended.so" \
+         -o codextended.so & \
+    # Wait for all background downloads to finish
+    wait \
+    \
+    # --- Extract: server binary + game library -------------------------------
     && tar -xjf cod-lnxded-1.1d.tar.bz2 \
     && rm cod-lnxded-1.1d.tar.bz2 \
-    # Show extracted layout for build log visibility
-    && echo "=== Tarball contents ===" \
-    && find . -not -path '*/\.*' | sort \
-    # Flatten: move cod_lnxded and game.mp.i386.so to /build root if nested
-    && find . -name "cod_lnxded" ! -path "./cod_lnxded" \
-         -exec mv {} ./cod_lnxded \; 2>/dev/null || true \
-    && find . -name "game.mp.i386.so" ! -path "./game.mp.i386.so" \
-         -exec mv {} ./game.mp.i386.so \; 2>/dev/null || true \
-    && echo "=== After flatten ===" \
-    && ls -lh . \
-    # Verify both files are present before proceeding
-    && test -f ./cod_lnxded      || (echo "ERROR: cod_lnxded not found!"      && exit 1) \
-    && test -f ./game.mp.i386.so || (echo "ERROR: game.mp.i386.so not found!" && exit 1)
-
-# -----------------------------------------------------------------------------
-# 2. CoD1 v1.1 base pk3 files (pak0–pak6 + localized english paks)
-#    Source: https://de.dvotx.org/dump/cod1/downloads.php?get=basefilesfull
-#
-#    Extracts into basefiles/ then flattens all pk3 files to basefiles/ root.
-# -----------------------------------------------------------------------------
-RUN curl -fsSL "https://de.dvotx.org/dump/cod1/downloads.php?get=basefilesfull" \
-        -o basefiles.zip \
+    # Flatten: move files to /build root if the tarball nested them
+    && find . -name "cod_lnxded"      ! -path "./cod_lnxded"      -exec mv {} . \; 2>/dev/null || true \
+    && find . -name "game.mp.i386.so" ! -path "./game.mp.i386.so" -exec mv {} . \; 2>/dev/null || true \
+    \
+    # --- Extract: base pk3 files ---------------------------------------------
     && unzip -q basefiles.zip -d basefiles \
     && rm basefiles.zip \
-    # Show what we got
-    && echo "=== Basefiles contents ===" \
-    && find basefiles/ | sort \
     # Flatten all pk3 files to basefiles/ root in case they are in a subdir
     && find basefiles/ -name "*.pk3" ! -path "basefiles/*.pk3" \
          -exec mv {} basefiles/ \; 2>/dev/null || true \
-    && echo "=== Basefiles after flatten ===" \
-    && ls -lh basefiles/ \
-    # Verify essential pk3 files are present
-    && test -f basefiles/pak0.pk3 || (echo "ERROR: pak0.pk3 not found!" && exit 1) \
-    && test -f basefiles/localized_english_pak0.pk3 \
-         || (echo "ERROR: localized_english_pak0.pk3 not found!" && exit 1)
-
-# -----------------------------------------------------------------------------
-# 3. CoDaM v1.31 — server-side admin/mod framework
-#    Source: https://de.dvotx.org/dump/cod1/CoDaM/CoDaM_V1.31.zip
-# -----------------------------------------------------------------------------
-RUN curl -fsSL "https://de.dvotx.org/dump/cod1/CoDaM/CoDaM_V1.31.zip" \
-        -o CoDaM_V1.31.zip \
+    \
+    # --- Extract: CoDaM core -------------------------------------------------
     && unzip -q CoDaM_V1.31.zip -d codam_core \
-    && rm CoDaM_V1.31.zip
-
-# -----------------------------------------------------------------------------
-# 4. CoDaM HamGoodies v1.35 — additional CoDaM module
-#    Source: https://de.dvotx.org/dump/cod1/CoDaM/CoDaM_HamGoodies_V1.35.zip
-# -----------------------------------------------------------------------------
-RUN curl -fsSL "https://de.dvotx.org/dump/cod1/CoDaM/CoDaM_HamGoodies_V1.35.zip" \
-        -o CoDaM_HamGoodies_V1.35.zip \
+    && rm CoDaM_V1.31.zip \
+    \
+    # --- Extract: CoDaM HamGoodies -------------------------------------------
     && unzip -q CoDaM_HamGoodies_V1.35.zip -d codam_ham \
-    && rm CoDaM_HamGoodies_V1.35.zip
-
-# -----------------------------------------------------------------------------
-# 5. CoDExtended — latest release from GitHub
-#    Uses GitHub's stable redirect:
-#    https://github.com/riicchhaarrd/codextended/releases/latest/download/<asset>
-#    The asset is named codextended.so for the CoD1 1.1 Linux build.
-# -----------------------------------------------------------------------------
-RUN curl -fsSL \
-        "https://github.com/riicchhaarrd/codextended/releases/latest/download/codextended.so" \
-        -o codextended.so
+    && rm CoDaM_HamGoodies_V1.35.zip \
+    \
+    # --- Verify all required files are present before proceeding -------------
+    && echo "=== Build artefacts ===" && find . | sort \
+    && test -f ./cod_lnxded                           || (echo "ERROR: cod_lnxded not found!"                    && exit 1) \
+    && test -f ./game.mp.i386.so                      || (echo "ERROR: game.mp.i386.so not found!"               && exit 1) \
+    && test -f ./basefiles/pak0.pk3                   || (echo "ERROR: pak0.pk3 not found!"                      && exit 1) \
+    && test -f ./basefiles/localized_english_pak0.pk3 || (echo "ERROR: localized_english_pak0.pk3 not found!"   && exit 1) \
+    && test -f ./codextended.so                       || (echo "ERROR: codextended.so not found!"                && exit 1) \
+    && echo "=== All downloads verified OK ==="
 
 # =============================================================================
 # Stage 2 — final
@@ -185,15 +164,11 @@ COPY --from=downloader /build/codam_ham/CoDaM_HamGoodies.cfg                /ser
 COPY --from=downloader /build/codam_ham/___CoDaM_HamGoodies__CoD1.1__.pk3   /server/main/
 
 # -----------------------------------------------------------------------------
-# Copy entrypoint script (added in next step)
+# Copy entrypoint script and fix permissions in one layer
 # -----------------------------------------------------------------------------
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# -----------------------------------------------------------------------------
-# Fix permissions — server binary must be executable
-# -----------------------------------------------------------------------------
-RUN chmod +x /server/cod_lnxded
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /server/cod_lnxded
 
 # -----------------------------------------------------------------------------
 # Declare mount points
