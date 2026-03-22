@@ -69,7 +69,7 @@ log "Verifying /server/main/ ..."
 [ -d "/server/main" ] \
     || die "/server/main is not mounted. Mount your CoD1 main/ folder here."
 
-# game.mp.i386.so is baked into the image - no need to check for it here.
+# game.mp.i386.so is baked into the image at /server/codam/ - no need to check for it here.
 [ -f "/server/main/pak0.pk3" ] \
     || die "pak0.pk3 not found in /server/main/. Mount your CoD1 main/ folder."
 
