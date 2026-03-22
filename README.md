@@ -47,23 +47,26 @@ mkdir -p main logs config
 
 ### 4. Add your CoD1 game files
 
-Copy your entire CoD1 `main/` folder contents into `./main/`. This folder comes from your legitimate CoD1 game installation (Steam, disc, or otherwise). It must contain at minimum:
+Copy the minimum required files from your legitimate CoD1 installation into `./main/`:
 
-| File | Required |
+| File | Notes |
 |---|---|
-| `pak0.pk3` | ✅ Yes |
-| `pak1.pk3` – `pak6.pk3` | ✅ Yes |
-| `game.mp.i386.so` | ✅ Yes |
-| `localized_english_pak0.pk3` | ✅ Yes |
-| `localized_english_pak1.pk3` | ✅ Yes |
+| `pak0.pk3` | Core assets — maps, models, textures, sounds |
+| `pak1.pk3` – `pak6.pk3` | Additional base assets |
+| `localized_english_pak0.pk3` | English text + `default_mp.cfg` |
+| `localized_english_pak1.pk3` | English voice lines |
 
 ```bash
-# Example: copy from a local CoD1 installation
-cp /path/to/CallOfDuty/main/*.pk3 ./main/
-cp /path/to/CallOfDuty/main/game.mp.i386.so ./main/
+# Copy only what is needed - skip DLLs, saves, demos, configs
+cp /path/to/CallOfDuty/main/pak{0,1,2,3,4,5,6}.pk3 ./main/
+cp /path/to/CallOfDuty/main/localized_english_pak{0,1}.pk3 ./main/
 ```
 
-> **Note:** CoDaM mod files are baked into the image — you do not need to copy them.
+> **Do not copy:** `.dll` files, `config.cfg`, `config_mp.cfg`, `save/`, `demos/`, `hunkusage.dat`, or any `z_*.pk3` mod files.
+>
+> **`game.mp.i386.so`** is the Linux game logic library — it is already baked into the image from the official Linux server tarball. You do not need to supply it.
+>
+> **CoDaM** mod files are also baked into the image. You do not need to copy them.
 
 ### 5. Start the server
 
