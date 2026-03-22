@@ -2,9 +2,8 @@
 
 A Docker container for running a **Call of Duty 1 (v1.1)** dedicated server on Linux.
 
-- **CoDExtended** — cracked client support, fast download, bot fixes
+- **CoDExtended** — cracked client support, fast download, bug fixes
 - **CoDaM v1.31 + HamGoodies v1.35** — server-side admin, map rotation, mod framework
-- **MeatBot RC2** — optional bots (experimental on dedicated servers)
 - **All config via environment variables** — no config files to edit
 - **Maps mounted at runtime** — slim image, bring your own `.pk3` files
 - **Runs as your own UID:GID** — no root, no permission headaches
@@ -126,11 +125,6 @@ All configuration is done via environment variables in your `.env` file. No conf
 | `SV_FAST_DOWNLOAD` | `1` | `1` = HTTP fast download redirect |
 | **Masterserver** | | |
 | `SV_MASTER` | `master.cod.pm` | Community masterserver |
-| **Bots** | | |
-| `BOTS_ENABLED` | `false` | `true` = enable MeatBot bots |
-| `BOTS_COUNT` | `4` | Number of bots to add |
-| `BOTS_TEAM` | `autoassign` | `allies` `axis` `autoassign` |
-| `BOTS_DIFFICULTY` | `5` | `0` (easiest) to `10` (hardest) |
 | **Misc** | | |
 | `SV_FPS` | `20` | Server tick rate |
 | `EXTRA_ARGS` | *(empty)* | Raw args appended to the server launch command |
@@ -188,29 +182,12 @@ Inside the container the layout is:
 
 ## 🤖 Bots
 
-Bots are provided by **MeatBot RC2**, a port of the CoD2 Meatbot mod.
+Bots are **not supported** on CoD1 v1.1 dedicated servers. This is a hard engine limitation — not a configuration issue:
 
-> ⚠️ **Warning:** MeatBot was originally designed for listen servers. Use on dedicated servers is experimental and may be unstable. TDM only.
-
-### Enabling Bots
-
-In your `.env`:
-
-```env
-BOTS_ENABLED=true
-BOTS_COUNT=6
-BOTS_TEAM=autoassign
-BOTS_DIFFICULTY=5
-```
-
-Bots are added automatically after the server starts by issuing `addbot` commands via RCON.
-
-### Bot Limitations
-
-- TDM gametype only — bots do not work in SD, RE, or BEL
-- `SV_PURE` must be `0` (already the default)
-- Bot count is approximate — the server may not accept all bots on first map load
-- If bots behave erratically, reduce `BOTS_DIFFICULTY` or restart the server
+- The only bot mod (MeatBot RC2) requires CoD1 **v1.5** — incompatible with our 1.1 server
+- MeatBot conflicts with CoDaM (`fs_game` can only point to one mod folder)
+- Bots accumulate across map rotations, permanently consuming player slots until the server runs out
+- Nobody in the 20+ year history of this game has solved these engine limitations
 
 ---
 
@@ -328,4 +305,3 @@ Call of Duty® is a registered trademark of Activision Publishing, Inc. This pro
 - [CoDExtended](https://github.com/riicchhaarrd/codextended) — server extension library
 - [CoDaM](https://de.dvotx.org/dump/cod1/CoDaM/) — server mod framework
 - [cod.pm](https://cod.pm) — community guide and masterserver
-- [MeatBot RC2](https://de.dvotx.org/dump/cod1/) — bot mod
