@@ -125,8 +125,9 @@ RUN mkdir -p \
         /server/codam \
         /server/logs \
         /server/config \
-    && chmod 777 \
+    && chmod -R 777 \
         /server/main \
+        /server/codam \
         /server/logs \
         /server/config
 
