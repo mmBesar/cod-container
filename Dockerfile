@@ -140,7 +140,7 @@ RUN mkdir -p \
 # relative to fs_basepath.
 # -----------------------------------------------------------------------------
 COPY --from=downloader /build/cod_lnxded      /server/cod_lnxded
-COPY --from=downloader /build/game.mp.i386.so /server/main/game.mp.i386.so
+COPY --from=downloader /build/game.mp.i386.so /server/codam/game.mp.i386.so
 COPY --from=downloader /build/codextended.so  /server/codextended.so
 
 # -----------------------------------------------------------------------------
