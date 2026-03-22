@@ -89,12 +89,6 @@ services:
       # --- Masterserver ------------------------------------------------------
       SV_MASTER:          "${SV_MASTER:-master.cod.pm}"
 
-      # --- Bots --------------------------------------------------------------
-      BOTS_ENABLED:       "${BOTS_ENABLED:-false}"
-      BOTS_COUNT:         "${BOTS_COUNT:-4}"
-      BOTS_TEAM:          "${BOTS_TEAM:-autoassign}"  # allies axis autoassign
-      BOTS_DIFFICULTY:    "${BOTS_DIFFICULTY:-5}"     # 0-10
-
       # --- Misc --------------------------------------------------------------
       SV_FPS:             "${SV_FPS:-20}"
       EXTRA_ARGS:         "${EXTRA_ARGS:-}"
