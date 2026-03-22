@@ -224,6 +224,11 @@ log "  Start map   : ${START_MAP}"
 # docker-compose.yml - no need for gosu. Just exec directly.
 log "Running as $(id -u):$(id -g)"
 
+# HOME must be set explicitly. The CoD1 binary uses $HOME/.callofduty as its
+# writable directory. Without HOME set, it defaults to "/" and fails with
+# "Unable to create directory //.callofduty, Permission denied".
+export HOME=/server
+
 exec env LD_PRELOAD=/server/codextended.so \
     /server/cod_lnxded \
         +set fs_basepath /server \
