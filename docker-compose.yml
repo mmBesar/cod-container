@@ -44,7 +44,7 @@ services:
     volumes:
       - ./main:/server/main:ro
       - ./logs:/server/logs
-      - ./config:/server/config:ro
+      - ./config:/server/config
 
     # -------------------------------------------------------------------------
     # Environment variables — all optional, sane defaults apply.
