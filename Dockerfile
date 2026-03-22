@@ -99,7 +99,6 @@ LABEL org.opencontainers.image.title="Call of Duty 1 Dedicated Server" \
 #   lib32z1           - 32-bit zlib
 #   libstdc++5:i386   - GCC 3.x C++ runtime that CoD1 requires
 #                       (not present in trixie - bookworm required)
-#   gosu              - clean UID/GID privilege drop in entrypoint
 # -----------------------------------------------------------------------------
 RUN dpkg --add-architecture i386 \
     && apt-get update \
@@ -107,7 +106,6 @@ RUN dpkg --add-architecture i386 \
         libc6-i386 \
         lib32z1 \
         libstdc++5:i386 \
-        gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
