@@ -220,8 +220,11 @@ log "  Gametype    : ${GAMETYPE}"
 log "  Max players : ${MAX_CLIENTS}"
 log "  Start map   : ${START_MAP}"
 
-exec gosu "$(id -u):$(id -g)" \
-    env LD_PRELOAD=/server/codextended.so \
+# UID/GID is already set correctly by Docker via the `user:` directive in
+# docker-compose.yml - no need for gosu. Just exec directly.
+log "Running as $(id -u):$(id -g)"
+
+exec env LD_PRELOAD=/server/codextended.so \
     /server/cod_lnxded \
         +set fs_basepath /server \
         +set fs_homepath /server \
