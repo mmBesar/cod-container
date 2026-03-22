@@ -34,13 +34,15 @@ services:
     # -------------------------------------------------------------------------
     # Volumes
     #
-    #   ./maps/    — put your .pk3 map files here (read-only in container)
+    #   ./main/    — your CoD1 main/ folder (pak0.pk3-pak6.pk3,
+    #                game.mp.i386.so, localized_english_pak*.pk3)
+    #                Mount read-only — the container never modifies it.
     #   ./logs/    — server log output (games_mp.log lands here)
     #   ./config/  — optional: place a hand-crafted server.cfg here to
     #                override all env-var-based config generation
     # -------------------------------------------------------------------------
     volumes:
-      - ./maps:/server/maps:ro
+      - ./main:/server/main:ro
       - ./logs:/server/logs
       - ./config:/server/config:ro
 
