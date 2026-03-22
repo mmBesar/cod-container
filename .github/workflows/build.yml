@@ -18,11 +18,11 @@
 name: Build & Push to GHCR
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"   # semver tags: v1.0.0, v2.3.1, etc.
+  # push:
+  #   branches:
+  #     - main
+  #   tags:
+  #     - "v[0-9]+.[0-9]+.[0-9]+"   # semver tags: v1.0.0, v2.3.1, etc.
   pull_request:
     branches:
       - main
